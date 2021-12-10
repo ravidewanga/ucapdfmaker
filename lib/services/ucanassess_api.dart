@@ -22,7 +22,7 @@ Future<bool> stopExam(url) async{
 }
 
 Future<void> gotToUpdate() async {
-  var url = 'https://play.google.com/store/apps/details?id=com.ucanapply.ucanassess';
+  var url = 'https://play.google.com/store/apps/details?id=com.ucanapply.ucapdfmaker';
   if (await canLaunch(url)) {
     await launch(url);
   } else {

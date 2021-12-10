@@ -109,6 +109,8 @@ class _ScanToPdfState extends State<ScanToPdf> {
   }
 
   Widget _buildBottomNavigationBar() {
+    print('ravi');
+    print(global.cameraClickCount);
     return Container(
       color: Colors.black,
       height: 100.0,
@@ -127,13 +129,7 @@ class _ScanToPdfState extends State<ScanToPdf> {
                 );
               }
               return GestureDetector(
-                // onTap: () => {
-                //   _controller?.dispose(),
-                //   setState(() {
-                //     _cameraOn = false;
-                //   }),
-                //   Navigator.of(context).pushNamed('/view_image'),
-                // },
+                onTap: finishCameraProcess,
                 child: Badge(
                   badgeContent: Text(global.cameraClickCount.toString()),
                   child: Container(
@@ -165,6 +161,7 @@ class _ScanToPdfState extends State<ScanToPdf> {
               },
             ),
           ),
+          global.cameraClickCount > 0 && global.cameraImages.length > 0 ?
           CircleAvatar(
             backgroundColor: Colors.white,
             radius: 23.0,
@@ -172,7 +169,7 @@ class _ScanToPdfState extends State<ScanToPdf> {
               onPressed: finishCameraProcess,
               child: const Text('Next',style: TextStyle(fontWeight: FontWeight.bold,color: Colors.black),),
             ),
-          ),
+          ) : Container(),
         ],
       ),
     );

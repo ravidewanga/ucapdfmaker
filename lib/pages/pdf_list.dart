@@ -266,66 +266,82 @@ class _PdfListState extends State<PdfListPage> {
     }
     if (!mounted) return;
 
-    if (barcodeScanRes.toString() != '-1') {
-      setState(() {
-        files[index].uploading = 1;
-      });
-
-      Uri uri = Uri.parse(barcodeScanRes.toString());
-      List pathSegments = uri.pathSegments;
-      var userId = pathSegments[3];
-      var qId = pathSegments[4];
-      var logId = pathSegments[5];
-      var screenNo = pathSegments[6];
-      String expires = uri.queryParameters['expires'];
-
-      print('userId $userId');
-      print('qId $qId');
-      print('logId $logId');
-      print('screenNo $screenNo');
-      print('host ${uri.host}');
-      print('expires $expires');
-
-      String uploadUrl = 'https://${uri.host}/onlineexam/public/api/upload-answer';
-      final request = MultipartRequest('POST',Uri.parse(uploadUrl),
-        onProgress: (int bytes, int total) {
-          final progress = bytes / total;
-          setState(() {
-            uploadPercentage = progress;
-          });
-          print('progress: $progress ($bytes/$total)');
-        },
-      );
-
-      request.headers['HeaderKey'] = '';
-      request.fields['user_id'] = userId;
-      request.fields['q_id'] = qId;
-      request.fields['log_id'] = logId;
-      request.fields['screen'] = screenNo;
-      request.fields['expires'] = expires;
-
-      request.files.add(await http.MultipartFile.fromPath('student_file',filepath,
-        contentType: MediaType('application', 'pdf'),),
-      );
-
-      final response = await request.send();
-      final respStr = await response.stream.bytesToString();
-      var res = jsonDecode(respStr);
-      print(res);
-      if(response.statusCode == 200){
-        //var name = path.basename(filepath);
-        //String newFileName = 'uploaded-'+name;
-        //changeFileNameOnly(File(filepath),newFileName);
+    try{
+      if (barcodeScanRes.toString() != '-1') {
         setState(() {
-          files[index].uploading = 2;
+          files[index].uploading = 1;
         });
-        _showUploadStatus();
+
+        Uri uri = Uri.parse(barcodeScanRes.toString());
+        List pathSegments = uri.pathSegments;
+        print(pathSegments);
+        var userId = pathSegments[3];
+        var qId = pathSegments[4];
+        var logId = pathSegments[5];
+        var screenNo = pathSegments[6];
+        String expires = uri.queryParameters['expires'];
+
+        print('userId $userId');
+        print('qId $qId');
+        print('logId $logId');
+        print('screenNo $screenNo');
+        print('host ${uri.host}');
+        print('expires $expires');
+
+        String uploadUrl = 'https://${uri.host}/onlineexam/public/api/upload-answer';
+        final request = MultipartRequest('POST',Uri.parse(uploadUrl),
+          onProgress: (int bytes, int total) {
+            final progress = bytes / total;
+            setState(() {
+              uploadPercentage = progress;
+            });
+            print('progress: $progress ($bytes/$total)');
+          },
+        );
+
+        request.headers['HeaderKey'] = '';
+        request.fields['user_id'] = userId;
+        request.fields['q_id'] = qId;
+        request.fields['log_id'] = logId;
+        request.fields['screen'] = screenNo;
+        request.fields['expires'] = expires;
+
+        request.files.add(await http.MultipartFile.fromPath('student_file',filepath,
+          contentType: MediaType('application', 'pdf'),),
+        );
+
+        final response = await request.send();
+        final respStr = await response.stream.bytesToString();
+        var res = jsonDecode(respStr);
+        print(res);
+        if(response.statusCode == 200){
+          //var name = path.basename(filepath);
+          //String newFileName = 'uploaded-'+name;
+          //changeFileNameOnly(File(filepath),newFileName);
+          setState(() {
+            files[index].uploading = 2;
+          });
+          _showUploadStatus();
+        }else{
+          setState(() {
+            files[index].uploading = 2;
+          });
+          Fluttertoast.showToast(
+              msg: res['msg'],
+              toastLength: Toast.LENGTH_SHORT,
+              gravity: ToastGravity.BOTTOM,
+              timeInSecForIosWeb: 1,
+              backgroundColor: Colors.red,
+              textColor: Colors.white,
+              fontSize: 16.0
+          );
+        }
       }else{
         setState(() {
           files[index].uploading = 2;
         });
         Fluttertoast.showToast(
-            msg: res['msg'],
+            msg: 'Something went wrong. Please try again.',
             toastLength: Toast.LENGTH_SHORT,
             gravity: ToastGravity.BOTTOM,
             timeInSecForIosWeb: 1,
@@ -334,12 +350,12 @@ class _PdfListState extends State<PdfListPage> {
             fontSize: 16.0
         );
       }
-    }else{
+    } catch (e) {
       setState(() {
         files[index].uploading = 2;
       });
       Fluttertoast.showToast(
-          msg: 'Something went wrong. Please try again.',
+          msg: 'QR Scanning error. Please refresh page & again.',
           toastLength: Toast.LENGTH_SHORT,
           gravity: ToastGravity.BOTTOM,
           timeInSecForIosWeb: 1,

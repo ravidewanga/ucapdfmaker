@@ -103,7 +103,7 @@ class _HomeState extends State<Home> {
     int checkMicPer = await check.checkMicPermission();
 
     bool myAllCheck = false;
-    if (internet == true && chrome == true && camCheck[1] != 0 && timeCheck == true &&chromeTab == true && checkCamPer == 1 && checkMicPer == 1)
+    if (internet == true && camCheck[1] != 0 && timeCheck == true && checkCamPer == 1)
     {
       myAllCheck = true;
     }
@@ -121,23 +121,23 @@ class _HomeState extends State<Home> {
         netConnection = internet;
       }
 
-      if (chromeStatus != chrome) {
-        if (chrome == false) {
-          chromeStatusMsg = 'This test requires a Chrome Browser V72 or above. Please install/update the same.';
-        } else {
-          chromeStatusMsg = '';
-        }
-        chromeStatus = chrome;
-      }
+      // if (chromeStatus != chrome) {
+      //   if (chrome == false) {
+      //     chromeStatusMsg = 'This test requires a Chrome Browser V72 or above. Please install/update the same.';
+      //   } else {
+      //     chromeStatusMsg = '';
+      //   }
+      //   chromeStatus = chrome;
+      // }
 
-      if (chromeTabStatus != chromeTab) {
-        if (chromeTab == false) {
-          chromeTabStatusMsg = 'This test requires a device with latest Android OS / Firmware. Please change your device.';
-        } else {
-          chromeTabStatusMsg = '';
-        }
-        chromeTabStatus = chromeTab;
-      }
+      // if (chromeTabStatus != chromeTab) {
+      //   if (chromeTab == false) {
+      //     chromeTabStatusMsg = 'This test requires a device with latest Android OS / Firmware. Please change your device.';
+      //   } else {
+      //     chromeTabStatusMsg = '';
+      //   }
+      //   chromeTabStatus = chromeTab;
+      // }
 
       if (cameraStatus != camCheck[1]) {
         cameraStatusMsg = camCheck[0];
@@ -315,31 +315,6 @@ class _HomeState extends State<Home> {
 
               divider(context),
 
-              ListTile(
-                leading: Image.asset('images/chrome.png',height: 30,width: 30,),
-                title: Text('Chrome Browser'),
-                subtitle: chromeStatusMsg != ""
-                    ? Text(chromeStatusMsg)
-                    : null,
-                trailing: chromeStatus
-                    ? Icon(Icons.check_circle,color: Colors.green,size: 25)
-                    : Icon(Icons.cancel,color: Colors.red,size: 25),
-              ),
-
-              divider(context),
-
-              ListTile(
-                leading: Image.asset('images/tab.png',height: 30,width: 30,),
-                title: Text('Chrome Tab Support'),
-                subtitle: chromeTabStatusMsg != ""
-                    ? Text(chromeTabStatusMsg)
-                    : null,
-                trailing: chromeTabStatus
-                    ? Icon(Icons.check_circle,color: Colors.green,size: 25)
-                    : Icon(Icons.cancel,color: Colors.red,size: 25),
-              ),
-
-              divider(context),
 
               ListTile(
                 leading: Image.asset('images/camera.png',height: 30,width: 30,),

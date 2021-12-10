@@ -1,4 +1,4 @@
-package com.example.ucapdfmaker
+package com.ucanapply.ucapdfmaker
 
 import android.app.ActivityManager
 import android.content.Context

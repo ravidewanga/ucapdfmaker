@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:ucapdfmaker/pages/Home_pdf.dart';
 import 'pages/pdf_list.dart';
 import 'pages/scan_to_pdf.dart';
 import 'pages/upload_pdf.dart';
@@ -29,7 +30,7 @@ class MyApp extends StatelessWidget {
           iconTheme: Theme.of(context).iconTheme,
         ),
       ),
-      home: Home(),
+      home: HomePage(),
       builder: EasyLoading.init(),
       routes:{
         '/home': (BuildContext context) => Home(),

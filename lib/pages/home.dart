@@ -24,45 +24,26 @@ class _HomeState extends State<Home> {
 
   //---------*********-----------------
   String netConnectionMsg = 'This test requires dedicated un-interrupted internet availability on the phone. Please ensure the same';
-  String chromeStatusMsg = 'This test requires a Chrome Browser V72 or above. Please install/update the same.';
-  String chromeTabStatusMsg = 'This test requires a device with latest Android OS / Firmware. Please change your device.';
   String cameraStatusMsg = '';
-  String timeZoneStatusMsg = 'This test requires Time Zone to be set to "India Standard Time" also time should be set to synchronize from the network. Please ensure the same.';
   String camPermissionMsg = '';
-  String micPermissionMsg = '';
 
   //------**********--------------
   bool netConnection = false;
-  bool chromeStatus = false;
-  bool chromeTabStatus = false;
   int cameraStatus;
   int camPermission;
-  int micPermission;
-  bool timeZoneStatus = false;
   bool allChecked = false;
   List installedAppList;
   bool loader = true;
 
   askPermission() async{
     bool camGranted = await Permission.camera.isGranted;
-    //bool camDenied = await Permission.camera.isDenied;
     bool camRationale = await Permission.camera.shouldShowRequestRationale;
 
-    bool micGranted = await Permission.microphone.isGranted;
-    //bool micDenied = await Permission.microphone.isDenied;
-    bool micRationale = await Permission.microphone.shouldShowRequestRationale;
-
-    print('micGranted $micGranted');
-    print('micRationale $micRationale');
-
-    if(camGranted == true && micGranted == true){
+    if(camGranted == true){
       //-------permission given----------
-    }else if((camGranted == false && camRationale == true) && (micGranted == false && micRationale == true)){
+    }else if(camGranted == false && camRationale == true){
       await Permission.camera.request();
-      await Permission.microphone.request();
-    }else if(camGranted == true && (micGranted == false && micRationale == true)){
-      await Permission.microphone.request();
-    }else if((camGranted == false && camRationale == true) && micGranted == true){
+    }else if(camGranted == false && camRationale == true){
       await Permission.camera.request();
     }else{
       openAppSettings();
@@ -121,36 +102,9 @@ class _HomeState extends State<Home> {
         netConnection = internet;
       }
 
-      // if (chromeStatus != chrome) {
-      //   if (chrome == false) {
-      //     chromeStatusMsg = 'This test requires a Chrome Browser V72 or above. Please install/update the same.';
-      //   } else {
-      //     chromeStatusMsg = '';
-      //   }
-      //   chromeStatus = chrome;
-      // }
-
-      // if (chromeTabStatus != chromeTab) {
-      //   if (chromeTab == false) {
-      //     chromeTabStatusMsg = 'This test requires a device with latest Android OS / Firmware. Please change your device.';
-      //   } else {
-      //     chromeTabStatusMsg = '';
-      //   }
-      //   chromeTabStatus = chromeTab;
-      // }
-
       if (cameraStatus != camCheck[1]) {
         cameraStatusMsg = camCheck[0];
         cameraStatus = camCheck[1];
-      }
-
-      if (timeZoneStatus != timeCheck) {
-        if (timeCheck == false) {
-          timeZoneStatusMsg = 'This test requires Time Zone to be set to "India Standard Time" also time should be set to synchronize from the network. Please ensure the same.';
-        } else {
-          timeZoneStatusMsg = '';
-        }
-        timeZoneStatus = timeCheck;
       }
 
       if(camPermission != checkCamPer){
@@ -162,15 +116,6 @@ class _HomeState extends State<Home> {
         camPermission = checkCamPer;
       }
 
-      if(micPermission != checkMicPer){
-        if(checkMicPer == 2){
-          camPermissionMsg = 'You have clicked never ask to permission.';
-        }else{
-          camPermissionMsg = '';
-        }
-        micPermission = checkMicPer;
-      }
-
       if (allChecked != myAllCheck) {
         allChecked = myAllCheck;
       }
@@ -178,18 +123,8 @@ class _HomeState extends State<Home> {
     });
   }
 
-  // nextButton(){
-  //   homeTimer?.cancel();
-  //   if(installedAppList.length > 0){
-  //     Navigator.push(context,MaterialPageRoute(builder: (context) => ProhibitedAppList()),);
-  //   }else{
-  //     Navigator.pushReplacementNamed(context, "/qr_scan_page");
-  //   }
-  // }
-
   nextButton(){
     homeTimer?.cancel();
-    //Navigator.pushNamed(context, "/options_page");
     Navigator.pushNamed(context, "/pdf_list");
   }
 
@@ -233,7 +168,6 @@ class _HomeState extends State<Home> {
                   padding: EdgeInsets.all(10),
                   child: ClipOval(
                     child: Material(
-                      //color: Colors.white, // Button color
                       child: InkWell(
                         splashColor: Colors.green, // Splash color
                         onTap: () =>{
@@ -331,36 +265,22 @@ class _HomeState extends State<Home> {
               divider(context),
 
               ListTile(
-                leading: Image.asset('images/time.png',height: 30,width: 30,),
-                title: Text('Time Zone'),
-                subtitle: timeZoneStatusMsg != ""
-                    ? Text(timeZoneStatusMsg)
-                    : null,
-                trailing: timeZoneStatus
-                    ? Icon(Icons.check_circle,color: Colors.green,size: 25)
-                    : Icon(Icons.cancel,color: Colors.red,size: 25),
-              ),
-
-              divider(context),
-
-              ListTile(
                 leading: Image.asset('images/permission_check.png',height: 30,width: 30,),
                 title: Text('Permission Check'),
-                subtitle: camPermission != 1 || micPermission != 1 ?
+                subtitle: camPermission != 1 ?
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    Text('Permission to access the camera & microphone is missing.'),
+                    Text('Permission to access the camera is missing.'),
                     InkWell(
                       onTap: askPermission,
                       child: Text('Give Permission',style: TextStyle(color: Colors.blue),),
                     ),
                   ],
                 ):Container(),
-                trailing: camPermission == 1 && micPermission == 1
+                trailing: camPermission == 1
                     ?  Icon(Icons.check_circle,color: Colors.green,size: 25)
-                    // : camPermission == 1 ? Icon(Icons.warning,color: Color(0xFFf0ad4e),size: 25)
                     : Icon(Icons.cancel,color: Colors.red,size: 25),
               ),
 
@@ -423,8 +343,7 @@ class _HomeState extends State<Home> {
         return WillPopScope(
           onWillPop: () async => false,
           child: AlertDialog(
-            //title: Text('A new version of this application is available now, Please update before taking any examination.'),
-            content:Text('A new version of this application is available now, Please update before taking any examination.'),
+            content:Text('A new version of this application is available now, Please update.'),
             actions: <Widget>[
               updateRequired
                   ? Container()

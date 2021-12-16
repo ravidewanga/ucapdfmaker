@@ -1,18 +1,18 @@
 import 'dart:io';
-import 'package:audioplayers/audioplayers.dart';
+import 'package:flutter/material.dart';
 import 'package:badges/badges.dart';
 import 'package:camera/camera.dart';
-import 'package:flutter/material.dart';
-import '../pages/gallery.dart';
+import 'package:audioplayers/audioplayers.dart';
+import '../pages/image_list.dart';
 import '../widgets/my_widgets.dart';
 import '../services/global.dart' as global;
 
-class ScanToPdf extends StatefulWidget {
+class Camera extends StatefulWidget {
   @override
-  _ScanToPdfState createState() => _ScanToPdfState();
+  _CameraState createState() => _CameraState();
 }
 
-class _ScanToPdfState extends State<ScanToPdf> {
+class _CameraState extends State<Camera> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   AudioCache _audioCache;
   bool _cameraOn = true;
@@ -35,11 +35,12 @@ class _ScanToPdfState extends State<ScanToPdf> {
 
   @override
   void initState() {
-    _audioCache = AudioCache(
-        prefix: "audio/",
-        fixedPlayer: AudioPlayer()..setReleaseMode(ReleaseMode.STOP));
+    setState(() {
+      global.cameraImages = [];
+    });
     _initCamera();
     super.initState();
+    _audioCache = AudioCache(prefix: "audio/", fixedPlayer: AudioPlayer()..setReleaseMode(ReleaseMode.STOP));
   }
 
   @override
@@ -109,8 +110,6 @@ class _ScanToPdfState extends State<ScanToPdf> {
   }
 
   Widget _buildBottomNavigationBar() {
-    print('ravi');
-    print(global.cameraClickCount);
     return Container(
       color: Colors.black,
       height: 100.0,
@@ -184,7 +183,7 @@ class _ScanToPdfState extends State<ScanToPdf> {
       setState(() {
         _cameraOn = false;
       });
-      Navigator.push(context,MaterialPageRoute(builder: (context) =>Gallery()));
+      Navigator.push(context,MaterialPageRoute(builder: (context) =>ImageList()));
     }
   }
 

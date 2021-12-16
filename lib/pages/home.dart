@@ -1,16 +1,36 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:async';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:package_info/package_info.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:intl/intl.dart';
+import 'package:open_file/open_file.dart';
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
+import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
+import 'package:multi_image_picker/multi_image_picker.dart';
+import 'package:flutter_absolute_path/flutter_absolute_path.dart';
+import 'package:ucapdfmaker/pages/image_list.dart';
+import '../pages/camera.dart';
+import '../services/multipart_request.dart';
+import '../services/api.dart' as api;
 import '../services/global.dart' as global;
-import '../services/enc_dec.dart';
 import '../widgets/my_widgets.dart';
-import '../services/mandatory_checklist.dart' as check;
-import '../services/ucanassess_api.dart' as api;
+
+class FileList{
+  String fileName;
+  String filePage;
+  String fileSize;
+  String createdAt;
+  String filePath;
+  int uploading;
+  FileList(this.fileName,this.filePage,this.fileSize,this.createdAt,this.filePath,this.uploading);
+}
 
 class Home extends StatefulWidget {
   @override
@@ -18,336 +38,371 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-
-  Timer homeTimer;
-  int batteryPer = 0;
-
-  //---------*********-----------------
-  String netConnectionMsg = 'This test requires dedicated un-interrupted internet availability on the phone. Please ensure the same';
-  String cameraStatusMsg = '';
-  String camPermissionMsg = '';
-
-  //------**********--------------
-  bool netConnection = false;
-  int cameraStatus;
-  int camPermission;
-  bool allChecked = false;
-  List installedAppList;
+  List<Asset> images = <Asset>[];
   bool loader = true;
+  List<FileList> files;
+  PdfDocument document = PdfDocument();
+  bool storagePermission = false;
+  double uploadPercentage = 0.00;
+  String uploadFileName = '';
 
-  askPermission() async{
-    bool camGranted = await Permission.camera.isGranted;
-    bool camRationale = await Permission.camera.shouldShowRequestRationale;
-
-    if(camGranted == true){
-      //-------permission given----------
-    }else if(camGranted == false && camRationale == true){
-      await Permission.camera.request();
-    }else if(camGranted == false && camRationale == true){
-      await Permission.camera.request();
-    }else{
-      openAppSettings();
-    }
-  }
-
-  versionCheck() async {
-    var header = encryp('com.ucanapply.ucanassess');
-    http.Response response = await http.get(
-      Uri.parse(global.baseUrl),
-      headers: {"Authorization": header},
-    );
-    Map data = jsonDecode(response.body);
-    if (response.statusCode == 200) {
-      int newVersion = data['build_no'];
-      bool updateRequired = data['updateRequired'];
-
-      final PackageInfo info = await PackageInfo.fromPlatform();
-      if (newVersion > int.parse(info.buildNumber)) {
-        Future.delayed(Duration.zero, () {
-          this.updateVersion(updateRequired);
-        });
+  void getFiles() async {
+    List<FileList> data = [];
+    final dirPath = (await getExternalStorageDirectory())?.path;
+    Directory dir = Directory(dirPath);
+    final checkPathExistence = await Directory(dirPath).exists();
+    if(checkPathExistence){
+      List allContents = dir.listSync(recursive: true);
+      for(var ff in allContents){
+        var name = path.basename(ff.path);
+        List splitName = name.split('.');
+        if(splitName.last == 'pdf'){
+          print(ff.path.toString());
+          var pageCount = await getPageCount(ff.path);
+          var fileSize = await getFileSize(ff.path, 1);
+          var fileDate = await getFileCreationDate(ff.path);
+          var filePath = ff.path.toString();
+          FileList f = FileList(name,pageCount,fileSize,fileDate,filePath,0);
+          data.add(f);
+        }
       }
+    }
+    data.sort((a,b) {
+      var adate = a.createdAt;
+      var bdate = b.createdAt;
+      return -adate.compareTo(bdate);
+    });
+    if (mounted) {
       setState(() {
-        global.versionCheck = false;
+        files = data;
+        loader = false;
+        storagePermission = true;
+        global.imagesList = [];
+        global.cameraImages = [];
       });
     }
   }
 
-  getALlCheck() async {
-    int battery = await check.getBatteryLevel();
-    bool internet = await check.checkNetConnection();
-    bool chrome = await check.checkChrome();
-    List camCheck = await check.cameraChecking();
-    bool timeCheck = await check.getTimeZone();
-    bool chromeTab = await check.isAvailableChromeTab();
-    int checkCamPer = await check.checkCameraPermission();
-    int checkMicPer = await check.checkMicPermission();
-
-    bool myAllCheck = false;
-    if (internet == true && camCheck[1] != 0 && timeCheck == true && checkCamPer == 1)
-    {
-      myAllCheck = true;
-    }
-
-    setState(() {
-      if (batteryPer != battery) {
-        batteryPer = battery;
-      }
-      if (netConnection != internet) {
-        if (internet == false) {
-          netConnectionMsg = 'This test requires dedicated un-interrupted internet availability on the phone. Please ensure the same.';
-        } else {
-          netConnectionMsg = '';
-        }
-        netConnection = internet;
-      }
-
-      if (cameraStatus != camCheck[1]) {
-        cameraStatusMsg = camCheck[0];
-        cameraStatus = camCheck[1];
-      }
-
-      if(camPermission != checkCamPer){
-        if(checkCamPer == 2){
-          camPermissionMsg = 'You have click never ask to permission.';
-        }else{
-          camPermissionMsg = '';
-        }
-        camPermission = checkCamPer;
-      }
-
-      if (allChecked != myAllCheck) {
-        allChecked = myAllCheck;
-      }
-      loader = false;
-    });
-  }
-
-  nextButton(){
-    homeTimer?.cancel();
-    Navigator.pushNamed(context, "/pdf_list");
+  deleteCache() async{
+    await api.deleteCacheDir();
   }
 
   @override
   void initState() {
-    if(global.versionCheck){
-      versionCheck();
-    }
-    homeTimer = Timer.periodic(Duration(seconds: 2), (Timer t) => getALlCheck());
+    getFiles();
+    deleteCache();
     super.initState();
   }
 
-  @override
-  void dispose() {
-    homeTimer?.cancel();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: _onWillPop,
-      child: Scaffold(
-        appBar: PreferredSize(
-          child: Container(
-            decoration: BoxDecoration(boxShadow: [
-              BoxShadow(
-                color: global.primaryColor,
-                offset: Offset(0, 1.5),
-                blurRadius: 1.0,
-              )
-            ]),
-            child: AppBar(
-              title: Image.asset('images/header_logo.png',fit: BoxFit.contain,height: 45,),
-              leading: Padding(
-                padding: const EdgeInsets.all(12.0),
-                child: Image.asset("images/logo_icon.png",),
-              ),
-              actions: [
-                Container(
-                  padding: EdgeInsets.all(10),
-                  child: ClipOval(
-                    child: Material(
-                      child: InkWell(
-                        splashColor: Colors.green, // Splash color
-                        onTap: () =>{
-                          Navigator.push(context,MaterialPageRoute(builder: (context) => Home()))
-                        },
-                        child: SizedBox(
-                          width: 37,
-                          height: 37,
-                          child: Icon(Icons.refresh),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+    return Scaffold(
+      appBar: PreferredSize(
+        child: Container(
+          decoration: BoxDecoration(boxShadow: [
+            BoxShadow(
+              color: global.primaryColor,
+              offset: Offset(0, 1.5),
+              blurRadius: 1.0,
+            )
+          ]),
+          child: AppBar(
+            title: Image.asset('images/header_logo.png',fit: BoxFit.contain,height: 45,),
+            leading: Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Image.asset("images/logo_icon.png",),
             ),
-          ),
-          preferredSize: Size.fromHeight(kToolbarHeight),
-        ),
-        body: loader
-            ? Center(
-          child: CircularProgressIndicator(),
-        )
-            : SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+            actions: [
               Container(
-                color: Color(0xFFF19F34),
                 padding: EdgeInsets.all(10),
-                child: Center(
-                  child: Text("MANDATORY SYSTEM REQUIREMENT CHECK",style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                ),
-              ),
-              Container(
-                padding: EdgeInsets.only(top: 10,left: 5,right: 5,bottom: 10),
-                child: RichText(
-                  text: TextSpan(
-                    text: 'The following are mandatory system requirements for taking the test. All requirements should have a ',
-                    style: TextStyle(fontSize: 14,color: Colors.black,fontWeight: FontWeight.bold),
-                    children:[
-                      WidgetSpan(
-                        child: Icon(Icons.check_circle,size: 14,color: Colors.green),
+                child: ClipOval(
+                  child: Material(
+                    //color: Colors.white, // Button color
+                    child: InkWell(
+                      splashColor: Colors.green, // Splash color
+                      onTap: () =>{
+                        Navigator.push(context,MaterialPageRoute(builder: (context) => Home()))
+                      },
+                      child: SizedBox(
+                        width: 37,
+                        height: 37,
+                        child: Icon(Icons.refresh),
                       ),
-                      TextSpan(text: ' mark against them to proceed forward. To resolve any issues please refer to directions given:'),
-                    ],
+                    ),
                   ),
-                ),
-              ),
-
-              ListTile(
-                leading: Image.asset('images/battery.png',height: 30,width: 30,),
-                title: Text('Battery'),
-                subtitle: batteryPer < 60 ? Text('Ideally your phone should be having a minimum charge of 60% to avoid your device from getting switched off in the middle of the test. Please take care.') : null,
-                trailing:Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(batteryPer.toString() + '%',
-                      style: TextStyle(fontSize: 16,fontWeight: FontWeight.bold),
-                    ),
-                    batteryPer < 60 ? Icon(Icons.warning,color: Color(0xFFf0ad4e),size: 25):
-                    Icon(Icons.check_circle,color: Colors.green,size: 25)
-                  ],
-                ),
-              ),
-              divider(context),
-
-              ListTile(
-                leading: Image.asset('images/internet.png',height: 30,width: 30,),
-                title: Text('Internet'),
-                subtitle: netConnectionMsg != ""
-                    ? Text(netConnectionMsg)
-                    : null,
-                trailing: netConnection
-                    ? Icon(Icons.check_circle,color: Colors.green,size: 25)
-                    : Icon(Icons.cancel,color: Colors.red,size: 25),
-              ),
-
-              divider(context),
-
-
-              ListTile(
-                leading: Image.asset('images/camera.png',height: 30,width: 30,),
-                title: Text('Camera Check'),
-                subtitle: cameraStatusMsg != ""
-                    ? Text(cameraStatusMsg)
-                    : null,
-                trailing: cameraStatus == 1
-                    ? Icon(Icons.check_circle,color: Colors.green,size: 25)
-                    : cameraStatus == 2 ? Icon(Icons.warning,color: Color(0xFFf0ad4e),size: 25)
-                    : Icon(Icons.cancel,color: Colors.red,size: 25),
-              ),
-
-              divider(context),
-
-              ListTile(
-                leading: Image.asset('images/permission_check.png',height: 30,width: 30,),
-                title: Text('Permission Check'),
-                subtitle: camPermission != 1 ?
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Text('Permission to access the camera is missing.'),
-                    InkWell(
-                      onTap: askPermission,
-                      child: Text('Give Permission',style: TextStyle(color: Colors.blue),),
-                    ),
-                  ],
-                ):Container(),
-                trailing: camPermission == 1
-                    ?  Icon(Icons.check_circle,color: Colors.green,size: 25)
-                    : Icon(Icons.cancel,color: Colors.red,size: 25),
-              ),
-
-              SizedBox(height: 15),
-
-              Container(
-                padding: EdgeInsets.all(10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    buttonWidget(context,'Next',allChecked ? nextButton : null,40.0,15.0),
-                  ],
                 ),
               ),
             ],
           ),
         ),
+        preferredSize: Size.fromHeight(kToolbarHeight),
       ),
+      body: loader ? Center(
+        child: loadingWidget(context),
+      ):files.length == 0 ? Center(
+        child: Text("No files found."),
+      ):  Container(
+        //padding: EdgeInsets.all(10),
+        child: Column(
+          children: [
+            Expanded(
+              child: Container(
+                padding: EdgeInsets.all(10),
+                child: ListView.builder(
+                  itemCount: files.length,
+                  itemBuilder: (BuildContext context,int index){
+                    return Card(
+                      child: Column(
+                        children: [
+                          ListTile(
+                            leading:  CircleAvatar(
+                              backgroundColor: Theme.of(context).accentColor,
+                              radius: 30,
+                              child: Icon(Icons.picture_as_pdf_sharp,color: Colors.white,size: 30,),
+                            ),
+                            title: Text(files[index].fileName,style: TextStyle(fontSize: 16,fontWeight: FontWeight.bold,),),
+                            subtitle: Text('Pages: ${files[index].filePage} \nSize: ${files[index].fileSize}\nDate: ${files[index].createdAt}',style: TextStyle(fontSize: 16),),
+                            trailing: files[index].uploading == 1 ? Container(
+                              height: 15,
+                              width: 15,
+                              child: CircularProgressIndicator(),
+                            ):null,
+                            onTap: () {
+                              OpenFile.open(files[index].filePath);
+                            },
+                          ),
+                          SizedBox(height: 10,),
+
+                          Divider(height: 1,),
+
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.delete,color: Colors.red,size: 30,),
+                                tooltip: 'Delete',
+                                onPressed: () => deleteFile(files[index].filePath),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.cloud_upload,color: Colors.green,size: 30),
+                                tooltip: 'Upload',
+                                onPressed: () => {
+                                  setState(() {
+                                    uploadFileName = files[index].fileName;
+                                  }),
+                                  //_showUploadStatus(),
+                                  showQROptions(index,files[index].filePath)
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      floatingActionButton:getFAB(context,loadAssets),
     );
   }
 
-  Future<bool> _onWillPop() {
-    return showDialog(
-      //barrierDismissible: false,
-      context: context,
-      builder: (context) => AlertDialog(
-        title: new Text(
-          'Do you want to close this application?',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-        ),
-        actions: <Widget>[
-          TextButton(
-            onPressed: () => {Navigator.of(context).pop(false)},
-            child: new Text(
-              'No',
-              style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                  color: Colors.grey),
-            ),
-          ),
-          TextButton(
-            onPressed: () => exit(0),
-            child: new Text(
-              'Yes',
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-    ) ??
-        false;
+  void displayBottomSheet(BuildContext context) {
+    Navigator.push(context,MaterialPageRoute(builder: (context) =>Camera()));
   }
 
-  Future<void> updateVersion(updateRequired) async {
-    return showDialog(
+  getFileSize(String filepath, int decimals) async {
+    var file = File(filepath);
+    int bytes = file.lengthSync();
+    if (bytes <= 0) return "0 B";
+    const suffixes = ["B", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
+    var i = (log(bytes) / log(1024)).floor();
+    return ((bytes / pow(1024, i)).toStringAsFixed(decimals)) +' ' + suffixes[i];
+  }
+
+  getPageCount(String filepath) async {
+    document = PdfDocument(inputBytes: File(filepath).readAsBytesSync());
+    int pageCount = document.pages.count;
+    return pageCount.toString();
+  }
+
+  getFileCreationDate(String filepath) async {
+    final stat = FileStat.statSync(filepath);
+    var lastModified = DateFormat("dd-MM-yyyy HH:mm").format(stat.changed); // yyyy-MM-dd hh:mm:ss
+    return lastModified.toString();
+  }
+
+  uploadPDF(index,filepath)async{
+    Navigator.of(context).pop(false);
+    String barcodeScanRes;
+    try {
+      barcodeScanRes = await FlutterBarcodeScanner.scanBarcode('#ff6666', 'Cancel', true, ScanMode.QR);
+    } on PlatformException {
+      barcodeScanRes = 'Failed to get platform version.';
+    }
+    if (!mounted) return;
+
+    if (barcodeScanRes.toString() != '-1') {
+      setState(() {
+        files[index].uploading = 1;
+      });
+
+      Uri uri = Uri.parse(barcodeScanRes.toString());
+      List pathSegments = uri.pathSegments;
+      var userId = pathSegments[3];
+      var qId = pathSegments[4];
+      var logId = pathSegments[5];
+      var screenNo = pathSegments[6];
+      String expires = uri.queryParameters['expires'];
+
+      print('userId $userId');
+      print('qId $qId');
+      print('logId $logId');
+      print('screenNo $screenNo');
+      print('host ${uri.host}');
+      print('expires $expires');
+
+      String uploadUrl = 'https://${uri.host}/onlineexam/public/api/upload-answer';
+      final request = MultipartRequest('POST',Uri.parse(uploadUrl),
+        onProgress: (int bytes, int total) {
+          final progress = bytes / total;
+          setState(() {
+            uploadPercentage = progress;
+          });
+          print('progress: $progress ($bytes/$total)');
+        },
+      );
+
+      request.headers['HeaderKey'] = '';
+      request.fields['user_id'] = userId;
+      request.fields['q_id'] = qId;
+      request.fields['log_id'] = logId;
+      request.fields['screen'] = screenNo;
+      request.fields['expires'] = expires;
+
+      request.files.add(await http.MultipartFile.fromPath('student_file',filepath,
+        contentType: MediaType('application', 'pdf'),),
+      );
+
+      final response = await request.send();
+      final respStr = await response.stream.bytesToString();
+      var res = jsonDecode(respStr);
+      print(res);
+      if(response.statusCode == 200){
+        setState(() {
+          files[index].uploading = 2;
+        });
+        _showUploadStatus();
+      }else{
+        setState(() {
+          files[index].uploading = 2;
+        });
+        Fluttertoast.showToast(
+            msg: res['msg'],
+            toastLength: Toast.LENGTH_SHORT,
+            gravity: ToastGravity.BOTTOM,
+            timeInSecForIosWeb: 1,
+            backgroundColor: Colors.red,
+            textColor: Colors.white,
+            fontSize: 16.0
+        );
+      }
+    }else{
+      setState(() {
+        files[index].uploading = 2;
+      });
+      Fluttertoast.showToast(
+          msg: 'Something went wrong. Please try again.',
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          timeInSecForIosWeb: 1,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+          fontSize: 16.0
+      );
+    }
+  }
+
+  Future<File> changeFileNameOnly(File file, String newFileName) {
+    var path = file.path;
+    var lastSeparator = path.lastIndexOf(Platform.pathSeparator);
+    var newPath = path.substring(0, lastSeparator + 1) + newFileName;
+    return file.rename(newPath);
+  }
+
+  Future<void> _showUploadStatus() async {
+    return showDialog<void>(
       context: context,
-      barrierDismissible: false, // user must tap button!
+      //barrierDismissible: false, // user must tap button!
       builder: (BuildContext context) {
-        return WillPopScope(
-          onWillPop: () async => false,
-          child: AlertDialog(
-            content:Text('A new version of this application is available now, Please update.'),
+        return AlertDialog(
+          //title: const Text(' Uploaded Successfully.',style: TextStyle(fontSize: 18),),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('$uploadFileName\nUploaded Successfully.',style: TextStyle(fontSize: 16,fontWeight: FontWeight.bold),),
+              Image.asset('images/success.gif'),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  showQROptions(index,filepath){
+    return showDialog<void>(
+      context: context,
+      //barrierDismissible: false, // user must tap button!
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title:Text('Scan the QR Code shown in your online examination for uploading this file.',
+            style: TextStyle(fontSize: 14,),),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ConstrainedBox(
+                constraints: BoxConstraints.tightFor(width: 100, height: 50),
+                child: ElevatedButton(
+                  onPressed: () => uploadPDF(index, filepath),
+                  child: Row(
+                    children: [
+                      Icon(Icons.qr_code,color: Colors.white,size: 20,),
+                      Text(' Scan',style: TextStyle(fontSize: 18)),
+                    ],
+                  ),
+                  style: TextButton.styleFrom(
+                    backgroundColor: global.primaryColor,
+                    primary: Colors.white,
+                    //minimumSize: Size(20, 50),
+                    //padding: EdgeInsets.symmetric(horizontal: 10.0, vertical: 15.0),
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: BorderRadius.all(Radius.circular(30.0)),
+                    ),
+                    //side: BorderSide(width: 1.5, color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  deleteFile(filepath){
+    return showDialog<void>(
+      context: context,
+      //barrierDismissible: false, // user must tap button!
+      builder: (BuildContext context) {
+        return AlertDialog(
+            title:Text('Are you sure? You want to delete this file.',style: TextStyle(fontSize: 16),),
             actions: <Widget>[
-              updateRequired
-                  ? Container()
-                  : TextButton(
+              TextButton(
                 child: new Text(
                   'Cancel',
                   style: TextStyle(
@@ -362,17 +417,56 @@ class _HomeState extends State<Home> {
                   Navigator.of(context).pop(false);
                 },
               ),
+
               TextButton(
-                onPressed: () => api.gotToUpdate(),
-                child: new Text(
-                  'Update Now',
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                ),
+                child: new Text('Yes',style: TextStyle(fontWeight: FontWeight.bold,fontSize: 16,color: Colors.blue),),
+                onPressed: () async{
+                  final file = File(filepath);
+                  await file.delete();
+                  getFiles();
+                  Navigator.of(context).pop(false);
+                },
               ),
-            ],
-          ),
+            ]
         );
       },
     );
+  }
+
+  Future<void> loadAssets() async {
+    List<Asset> resultList = <Asset>[];
+    try {
+      resultList = await MultiImagePicker.pickImages(
+        maxImages: 50,
+        enableCamera: true,
+        selectedAssets: images,
+        cupertinoOptions: CupertinoOptions(takePhotoIcon: "chat"),
+        materialOptions: MaterialOptions(
+          actionBarColor: "#3866ab",
+          actionBarTitle: "UCanEvaluate",
+          allViewTitle: "All Photos",
+          useDetailsView: false,
+          selectCircleStrokeColor: "#000000",
+        ),
+      );
+    } on Exception catch (e) {
+      print(e);
+      //error = e.toString();
+    }
+    if (!mounted) return;
+
+    if(resultList.length > 0){
+      for (var img in resultList) {
+        var path2 = await FlutterAbsolutePath.getAbsolutePath(img.identifier);
+        var file = await getImageFileFromAsset(path2);
+        global.imagesList.add(File(file.path));
+      }
+      Navigator.push(context,MaterialPageRoute(builder: (context) =>ImageList()));
+    }
+  }
+
+  getImageFileFromAsset(String path) async{
+    final file = File(path);
+    return file;
   }
 }

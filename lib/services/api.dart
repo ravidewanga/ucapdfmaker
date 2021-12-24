@@ -3,6 +3,15 @@ import 'package:device_info/device_info.dart';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_share/flutter_share.dart';
+
+Future<void> shareFile(title,text,file) async {
+  await FlutterShare.shareFile(
+    title: title,
+    text: text,
+    filePath: file.toString(),
+  );
+}
 
 Future<void> gotToUpdate() async {
   var url = 'https://play.google.com/store/apps/details?id=com.ucanapply.ucanassess';

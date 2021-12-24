@@ -17,9 +17,9 @@ Widget getFAB(BuildContext context,loadAssets) {
     curve: Curves.bounceIn,
     icon: Icons.add,
     activeIcon: Icons.close,
-    spacing: 3,
-    childPadding: const EdgeInsets.all(5),
-    spaceBetweenChildren: 4,
+    // spacing: 3,
+    // childPadding: const EdgeInsets.all(5),
+    // spaceBetweenChildren: 4,
     children: [
       // FAB 1
       SpeedDialChild(

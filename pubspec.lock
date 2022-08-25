@@ -56,7 +56,7 @@ packages:
       name: camera_platform_interface
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.1.1"
+    version: "2.0.0"
   characters:
     dependency: transitive
     description:
@@ -126,7 +126,7 @@ packages:
       name: device_info_platform_interface
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.0.1"
+    version: "2.0.0"
   drag_and_drop_gridview:
     dependency: "direct main"
     description:
@@ -386,7 +386,7 @@ packages:
       name: process
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "4.2.4"
+    version: "4.2.3"
   quiver:
     dependency: transitive
     description:
@@ -552,7 +552,7 @@ packages:
       name: win32
       url: "https://pub.dartlang.org"
     source: hosted
-    version: "2.3.1"
+    version: "2.2.10"
   xdg_directories:
     dependency: transitive
     description:

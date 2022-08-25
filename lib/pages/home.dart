@@ -157,7 +157,7 @@ class _HomeState extends State<Home> {
                         children: [
                           ListTile(
                             leading:  CircleAvatar(
-                              backgroundColor: Theme.of(context).accentColor,
+                              backgroundColor: global.primaryColor,
                               radius: 30,
                               child: Icon(Icons.picture_as_pdf_sharp,color: Colors.white,size: 30,),
                             ),

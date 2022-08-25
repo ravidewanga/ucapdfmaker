@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:ucapdfmaker/pages/camera.dart';
-import 'package:ucapdfmaker/pages/gallery.dart';
 import 'pages/home.dart';
 
 void main() async{
@@ -25,8 +24,7 @@ class MyApp extends StatelessWidget {
       home: Home(),
       routes:{
         '/home': (BuildContext context) => Home(),
-        '/camera': (BuildContext context) => Camera(),
-        '/gallery': (BuildContext context) => Gallery(),
+        '/camera': (BuildContext context) => Camera()
       },
     );
   }

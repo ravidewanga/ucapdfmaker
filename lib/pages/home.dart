@@ -15,7 +15,7 @@ import 'package:http_parser/http_parser.dart' show MediaType;
 import 'package:flutter_barcode_scanner/flutter_barcode_scanner.dart';
 import 'package:multi_image_picker/multi_image_picker.dart';
 import 'package:flutter_absolute_path/flutter_absolute_path.dart';
-import 'package:ucapdfmaker/pages/image_list.dart';
+import '../pages/image_list.dart';
 import '../pages/camera.dart';
 import '../services/multipart_request.dart';
 import '../services/api.dart' as api;
@@ -183,6 +183,11 @@ class _HomeState extends State<Home> {
                                 icon: const Icon(Icons.delete,color: Colors.red,size: 30,),
                                 tooltip: 'Delete',
                                 onPressed: () => deleteFile(files[index].filePath),
+                              ),
+                              IconButton(
+                                icon: const Icon(Icons.share,color: Colors.blue,size: 30,),
+                                tooltip: 'Share',
+                                onPressed: () => api.shareFile(files[index].fileName,files[index].fileName,files[index].filePath),
                               ),
                               IconButton(
                                 icon: const Icon(Icons.cloud_upload,color: Colors.green,size: 30),
